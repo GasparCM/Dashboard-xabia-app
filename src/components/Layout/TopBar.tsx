@@ -1,25 +1,41 @@
-import React, { useState } from 'react';
-import { ChevronDown, Search, Bell, User, LogOut, Globe } from 'lucide-react';
-import { useApp } from '../../store/AppContext';
-import { useTranslation } from '../../hooks/useTranslation';
-import { Language } from '../../types';
+import React, { useState } from "react";
+import { ChevronDown, Search, Bell, User, LogOut, Globe } from "lucide-react";
+import { useApp } from "../../store/AppContext";
+import { useNavigate } from "react-router-dom";
+import { Language } from "../../types";
+import { useTranslation } from "../../hooks/useTranslation";
 
-export const TopBar: React.FC<{ title: string; breadcrumb?: string[] }> = ({ title, breadcrumb = [] }) => {
+export const TopBar: React.FC<{ title: string; breadcrumb?: string[] }> = ({
+  title,
+  breadcrumb = [],
+}) => {
   const { state, dispatch } = useApp();
   const { currentUser, language } = state;
   const { t } = useTranslation();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const navigate = useNavigate();
 
   const languages = [
-    { code: 'es' as Language, name: 'Español' },
-    { code: 'va' as Language, name: 'Valencià' },
-    { code: 'en' as Language, name: 'English' },
+    { code: "es" as Language, name: "Español" },
+    { code: "va" as Language, name: "Valencià" },
+    { code: "en" as Language, name: "English" },
   ];
 
   const handleLanguageChange = (newLanguage: Language) => {
-    dispatch({ type: 'SET_LANGUAGE', payload: newLanguage });
+    dispatch({ type: "SET_LANGUAGE", payload: newLanguage });
     setShowLangMenu(false);
+  };
+
+  const goProfile = () => {
+    setShowUserMenu(false);
+    navigate("/profile");
+  };
+
+  const logout = () => {
+    dispatch({ type: "LOGOUT" });
+    setShowUserMenu(false);
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -27,13 +43,19 @@ export const TopBar: React.FC<{ title: string; breadcrumb?: string[] }> = ({ tit
       <div className="flex items-center justify-between">
         {/* Title and Breadcrumb */}
         <div>
-          <h1 className="text-2xl font-semibold text-text-title-strong">{title}</h1>
+          <h1 className="text-2xl font-semibold text-text-title-strong">
+            {title}
+          </h1>
           {breadcrumb.length > 0 && (
             <nav className="text-sm text-text-body mt-1">
               {breadcrumb.map((crumb, index) => (
                 <span key={index}>
                   {index > 0 && <span className="mx-2">/</span>}
-                  <span className={index === breadcrumb.length - 1 ? 'text-primary' : ''}>
+                  <span
+                    className={
+                      index === breadcrumb.length - 1 ? "text-primary" : ""
+                    }
+                  >
                     {crumb}
                   </span>
                 </span>
@@ -49,7 +71,7 @@ export const TopBar: React.FC<{ title: string; breadcrumb?: string[] }> = ({ tit
             <Search className="w-4 h-4 absolute left-3 top-3 text-text-body" />
             <input
               type="text"
-              placeholder="Buscar..."
+              placeholder={t('common.searchPlaceholder')}
               className="pl-10 pr-4 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
             />
           </div>
@@ -67,7 +89,9 @@ export const TopBar: React.FC<{ title: string; breadcrumb?: string[] }> = ({ tit
               className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50"
             >
               <Globe className="w-4 h-4 text-text-body" />
-              <span className="text-sm text-text-body uppercase">{language}</span>
+              <span className="text-sm text-text-body uppercase">
+                {language}
+              </span>
               <ChevronDown className="w-4 h-4 text-text-body" />
             </button>
 
@@ -78,7 +102,9 @@ export const TopBar: React.FC<{ title: string; breadcrumb?: string[] }> = ({ tit
                     key={lang.code}
                     onClick={() => handleLanguageChange(lang.code)}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg ${
-                      language === lang.code ? 'bg-primary/10 text-primary' : 'text-text-body'
+                      language === lang.code
+                        ? "bg-primary/10 text-primary"
+                        : "text-text-body"
                     }`}
                   >
                     {lang.name}
@@ -96,12 +122,16 @@ export const TopBar: React.FC<{ title: string; breadcrumb?: string[] }> = ({ tit
             >
               <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">
-                  {currentUser?.name.charAt(0).toUpperCase()}
+                  {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : "U"}
                 </span>
               </div>
               <div className="text-left hidden md:block">
-                <div className="text-sm font-medium text-text-title-strong">{currentUser?.name}</div>
-                <div className="text-xs text-text-body capitalize">{currentUser?.role}</div>
+                <div className="text-sm font-medium text-text-title-strong">
+                  {currentUser?.name}
+                </div>
+                <div className="text-xs text-text-body capitalize">
+                  {currentUser?.role}
+                </div>
               </div>
               <ChevronDown className="w-4 h-4 text-text-body" />
             </button>
@@ -109,16 +139,20 @@ export const TopBar: React.FC<{ title: string; breadcrumb?: string[] }> = ({ tit
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-white border border-border rounded-lg shadow-lg z-50">
                 <div className="p-3 border-b border-border">
-                  <div className="text-sm font-medium text-text-title-strong">{currentUser?.name}</div>
-                  <div className="text-xs text-text-body">{currentUser?.email}</div>
+                  <div className="text-sm font-medium text-text-title-strong">
+                    {currentUser?.name}
+                  </div>
+                  <div className="text-xs text-text-body">
+                    {currentUser?.email}
+                  </div>
                 </div>
-                <button className="w-full text-left px-4 py-2 text-sm text-text-body hover:bg-gray-50 flex items-center space-x-2">
+                <button onClick={goProfile} className="w-full text-left px-4 py-2 text-sm text-text-body hover:bg-gray-50 flex items-center space-x-2">
                   <User className="w-4 h-4" />
-                  <span>Perfil</span>
+                  <span>{t('topbar.profile')}</span>
                 </button>
-                <button className="w-full text-left px-4 py-2 text-sm text-error hover:bg-gray-50 flex items-center space-x-2 rounded-b-lg">
+                <button onClick={logout} className="w-full text-left px-4 py-2 text-sm text-error hover:bg-gray-50 flex items-center space-x-2 rounded-b-lg">
                   <LogOut className="w-4 h-4" />
-                  <span>Cerrar sesión</span>
+                  <span>{t('topbar.logout')}</span>
                 </button>
               </div>
             )}

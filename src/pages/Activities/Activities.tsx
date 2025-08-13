@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Calendar, Clock, Users, Euro, Eye, Edit, Trash2 } from 'lucide-react';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
@@ -7,15 +8,74 @@ import { mockAPI } from '../../mocks/data';
 import { Activity } from '../../types';
 import { usePermissions } from '../../store/AppContext';
 import toast from 'react-hot-toast';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
 
 export const Activities: React.FC = () => {
+  const navigate = useNavigate();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCategory, setEditCategory] = useState('Deportes Acuáticos');
+  const [editPrice, setEditPrice] = useState<number>(0);
+  const [editDuration, setEditDuration] = useState<number>(60);
+  const [editMaxCapacity, setEditMaxCapacity] = useState<number>(0);
+  const [editDescription, setEditDescription] = useState('');
+  const [editRequiresReservation, setEditRequiresReservation] = useState(false);
   const permissions = usePermissions();
+
+  // Eventos de calendario inventados a partir de las actividades
+  const calendarEvents = useMemo(() => {
+    const events: { id: string; title: string; start: string; end: string }[] = [];
+    // Obtener próximo lunes
+    const now = new Date();
+    const day = now.getDay();
+    const diffToMonday = (1 - day + 7) % 7 || 7; // próximo lunes siempre en el futuro
+    const nextMonday = new Date(now);
+    nextMonday.setDate(now.getDate() + diffToMonday);
+    nextMonday.setHours(10, 0, 0, 0);
+
+    activities.forEach((a) => {
+      // Dos sesiones por actividad: lunes 10:00 y miércoles 17:00 de la próxima semana
+      const d1 = new Date(nextMonday);
+      const d2 = new Date(nextMonday);
+      d2.setDate(d2.getDate() + 2); // miércoles
+      d2.setHours(17, 0, 0, 0);
+
+      const dur = Math.max(30, a.duration || 60); // duración segura
+
+      const end1 = new Date(d1.getTime() + dur * 60000);
+      const end2 = new Date(d2.getTime() + dur * 60000);
+
+      events.push({
+        id: `${a.id}-1`,
+        title: `${a.name} (${a.category})`,
+        start: d1.toISOString(),
+        end: end1.toISOString(),
+      });
+      events.push({
+        id: `${a.id}-2`,
+        title: `${a.name} (${a.category})`,
+        start: d2.toISOString(),
+        end: end2.toISOString(),
+      });
+    });
+    // Si no hay actividades aún, poner un placeholder
+    if (events.length === 0) {
+      const s = new Date(nextMonday);
+      const e = new Date(s.getTime() + 60 * 60000);
+      events.push({ id: 'placeholder', title: 'Sesión de demostración', start: s.toISOString(), end: e.toISOString() });
+    }
+    return events;
+  }, [activities]);
 
   useEffect(() => {
     const loadActivities = async () => {
@@ -42,6 +102,36 @@ export const Activities: React.FC = () => {
       setActivities(activities.filter(activity => activity.id !== id));
       toast.success('Actividad eliminada');
     }
+  };
+
+  const openEdit = (activity: Activity) => {
+    setEditingActivity(activity);
+    setEditName(activity.name);
+    setEditCategory(activity.category);
+    setEditPrice(activity.price);
+    setEditDuration(activity.duration);
+    setEditMaxCapacity(activity.maxCapacity);
+    setEditDescription(activity.description);
+    setEditRequiresReservation(activity.requiresReservation);
+    setShowEditModal(true);
+  };
+
+  const saveEdit = () => {
+    if (!editingActivity) return;
+    const updated: Activity = {
+      ...editingActivity,
+      name: editName,
+      category: editCategory,
+      price: editPrice,
+      duration: editDuration,
+      maxCapacity: editMaxCapacity,
+      description: editDescription,
+      requiresReservation: editRequiresReservation,
+    };
+    setActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
+    setShowEditModal(false);
+    setEditingActivity(null);
+    toast.success('Actividad actualizada');
   };
 
   if (loading) {
@@ -158,11 +248,11 @@ export const Activities: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 pt-2 border-t border-border">
-                <Button variant="outline" size="sm" icon={Eye}>
+                <Button variant="outline" size="sm" icon={Eye} onClick={() => navigate(`/activities/${activity.id}`)}>
                   Ver
                 </Button>
                 {permissions.canEdit && (
-                  <Button variant="outline" size="sm" icon={Edit}>
+                  <Button variant="outline" size="sm" icon={Edit} onClick={() => openEdit(activity)}>
                     Editar
                   </Button>
                 )}
@@ -243,6 +333,14 @@ export const Activities: React.FC = () => {
               placeholder="Descripción de la actividad"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-text-title mb-1">Imagen</label>
+            <input
+              type="file"
+              accept="image/*"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -271,13 +369,123 @@ export const Activities: React.FC = () => {
         title="Calendario de Disponibilidad"
         size="xl"
       >
-        <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
-          <div className="text-center">
-            <Calendar className="w-12 h-12 text-text-body mx-auto mb-4" />
-            <p className="text-text-body">Vista de calendario - Disponibilidad de actividades</p>
-            <p className="text-sm text-text-body mt-2">
-              Aquí se mostraría un calendario interactivo con la disponibilidad
-            </p>
+        <div className="h-[600px]">
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay',
+            }}
+            height="100%"
+            events={calendarEvents}
+            selectable={true}
+            selectMirror={true}
+            nowIndicator={true}
+          />
+        </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Editar Actividad"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Nombre</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Nombre de la actividad"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Categoría</label>
+              <select
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="Deportes Acuáticos">Deportes Acuáticos</option>
+                <option value="Excursiones">Excursiones</option>
+                <option value="Instalaciones Deportivas">Instalaciones Deportivas</option>
+                <option value="Turismo Activo">Turismo Activo</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Precio (€)</label>
+              <input
+                type="number"
+                value={editPrice}
+                onChange={(e) => setEditPrice(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Duración (min)</label>
+              <input
+                type="number"
+                value={editDuration}
+                onChange={(e) => setEditDuration(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Aforo máximo</label>
+              <input
+                type="number"
+                value={editMaxCapacity}
+                onChange={(e) => setEditMaxCapacity(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-title mb-1">Descripción</label>
+            <textarea
+              rows={3}
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="Descripción de la actividad"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-title mb-1">Imagen</label>
+            <input
+              type="file"
+              accept="image/*"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="editRequiresReservation"
+              checked={editRequiresReservation}
+              onChange={(e) => setEditRequiresReservation(e.target.checked)}
+              className="mr-2"
+            />
+            <label htmlFor="editRequiresReservation" className="text-sm text-text-title">
+              Requiere reserva previa
+            </label>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={saveEdit}>
+              Guardar cambios
+            </Button>
           </div>
         </div>
       </Modal>

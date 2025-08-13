@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Grid, List, Edit, Trash2, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Grid, List, Edit, Trash2, Eye } from 'lucide-react';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Modal } from '../../components/UI/Modal';
@@ -9,13 +10,16 @@ import { usePermissions } from '../../store/AppContext';
 import toast from 'react-hot-toast';
 
 export const News: React.FC = () => {
+  const navigate = useNavigate();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedNews, setSelectedNews] = useState<NewsItem[]>([]);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingNews, setEditingNews] = useState<NewsItem | null>(null);
+  // Eliminado selectedNews por no usarse
   const permissions = usePermissions();
 
   useEffect(() => {
@@ -30,6 +34,18 @@ export const News: React.FC = () => {
 
     loadNews();
   }, []);
+
+  const openEdit = (item: NewsItem) => {
+    setEditingNews(item);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingNews) return;
+    setNews(prev => prev.map(n => n.id === editingNews.id ? { ...n, ...editingNews } : n));
+    setShowEditModal(false);
+    toast.success('Noticia actualizada');
+  };
 
   const filteredNews = news.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -188,11 +204,11 @@ export const News: React.FC = () => {
                   </div>
                 )}
                 <div className="flex items-center gap-2 pt-2 border-t border-border">
-                  <Button variant="outline" size="sm" icon={Eye}>
+                  <Button variant="outline" size="sm" icon={Eye} onClick={() => navigate(`/news/${item.id}`)}>
                     Ver
                   </Button>
                   {permissions.canEdit && (
-                    <Button variant="outline" size="sm" icon={Edit}>
+                    <Button variant="outline" size="sm" icon={Edit} onClick={() => openEdit(item)}>
                       Editar
                     </Button>
                   )}
@@ -251,9 +267,9 @@ export const News: React.FC = () => {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" icon={Eye}>Ver</Button>
+                        <Button variant="outline" size="sm" icon={Eye} onClick={() => navigate(`/news/${item.id}`)}>Ver</Button>
                         {permissions.canEdit && (
-                          <Button variant="outline" size="sm" icon={Edit}>Editar</Button>
+                          <Button variant="outline" size="sm" icon={Edit} onClick={() => openEdit(item)}>Editar</Button>
                         )}
                         {permissions.canDelete && (
                           <Button 
@@ -300,6 +316,14 @@ export const News: React.FC = () => {
             />
           </div>
           <div>
+            <label className="block text-sm font-medium text-text-title mb-1">Imagen</label>
+            <input
+              type="file"
+              accept="image/*"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-text-title mb-1">Estado</label>
             <select className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
               <option value="draft">Borrador</option>
@@ -316,6 +340,61 @@ export const News: React.FC = () => {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Editar Noticia"
+        size="lg"
+      >
+        {editingNews && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Título</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={editingNews.title}
+                onChange={(e) => setEditingNews({ ...editingNews, title: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Resumen</label>
+              <textarea
+                rows={3}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={editingNews.summary}
+                onChange={(e) => setEditingNews({ ...editingNews, summary: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Imagen</label>
+              <input
+                type="file"
+                accept="image/*"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Estado</label>
+              <select
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={editingNews.status}
+                onChange={(e) => setEditingNews({ ...editingNews, status: e.target.value as any })}
+              >
+                <option value="draft">Borrador</option>
+                <option value="scheduled">Programado</option>
+                <option value="published">Publicado</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancelar</Button>
+              <Button onClick={handleSaveEdit}>Guardar cambios</Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

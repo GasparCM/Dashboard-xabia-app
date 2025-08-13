@@ -14,7 +14,21 @@ export const Notices: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
   const permissions = usePermissions();
+
+  const openEdit = (n: Notice) => {
+    setEditingNotice({ ...n });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingNotice) return;
+    setNotices(prev => prev.map(n => (n.id === editingNotice.id ? { ...n, ...editingNotice } : n)));
+    setShowEditModal(false);
+    toast.success('Aviso actualizado');
+  };
 
   useEffect(() => {
     const loadNotices = async () => {
@@ -179,7 +193,7 @@ export const Notices: React.FC = () => {
                         Ver
                       </Button>
                       {permissions.canEdit && (
-                        <Button variant="outline" size="sm" icon={Edit}>
+                        <Button variant="outline" size="sm" icon={Edit} onClick={() => openEdit(notice)}>
                           Editar
                         </Button>
                       )}
@@ -276,6 +290,95 @@ export const Notices: React.FC = () => {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Editar Aviso Municipal"
+        size="lg"
+      >
+        {editingNotice && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Título</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={editingNotice.title}
+                onChange={(e) => setEditingNotice({ ...editingNotice, title: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Descripción</label>
+              <textarea
+                rows={4}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={editingNotice.description}
+                onChange={(e) => setEditingNotice({ ...editingNotice, description: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-title mb-1">Categoría</label>
+                <select
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={editingNotice.category}
+                  onChange={(e) => setEditingNotice({ ...editingNotice, category: e.target.value as any })}
+                >
+                  <option value="general">General</option>
+                  <option value="obras">Obras</option>
+                  <option value="trafico">Tráfico</option>
+                  <option value="emergencias">Emergencias</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-title mb-1">Fecha</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={editingNotice.date ? new Date(editingNotice.date).toISOString().slice(0,10) : ''}
+                  onChange={(e) => setEditingNotice({ ...editingNotice, date: e.target.value ? new Date(e.target.value) : editingNotice.date })}
+                />
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="sendPushEdit"
+                  className="mr-2"
+                  checked={!!editingNotice.sendPush}
+                  onChange={(e) => setEditingNotice({ ...editingNotice, sendPush: e.target.checked })}
+                />
+                <label htmlFor="sendPushEdit" className="text-sm text-text-title">
+                  Enviar notificación push
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isActiveEdit"
+                  className="mr-2"
+                  checked={!!editingNotice.isActive}
+                  onChange={(e) => setEditingNotice({ ...editingNotice, isActive: e.target.checked })}
+                />
+                <label htmlFor="isActiveEdit" className="text-sm text-text-title">
+                  Aviso activo
+                </label>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowEditModal(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveEdit}>
+                Guardar Cambios
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

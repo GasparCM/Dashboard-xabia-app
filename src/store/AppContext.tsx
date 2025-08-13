@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { User, Language } from '../types';
 
 interface AppState {
@@ -11,6 +11,7 @@ interface AppState {
 
 type AppAction =
   | { type: 'SET_USER'; payload: User }
+  | { type: 'LOGOUT' }
   | { type: 'SET_LANGUAGE'; payload: Language }
   | { type: 'TOGGLE_SIDEBAR' }
   | { type: 'SET_LOADING'; payload: boolean }
@@ -20,7 +21,7 @@ const initialState: AppState = {
   currentUser: null,
   language: 'es',
   sidebarCollapsed: false,
-  loading: false,
+  loading: true,
   theme: 'auto',
 };
 
@@ -28,6 +29,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case 'SET_USER':
       return { ...state, currentUser: action.payload };
+    case 'LOGOUT':
+      return { ...state, currentUser: null };
     case 'SET_LANGUAGE':
       return { ...state, language: action.payload };
     case 'TOGGLE_SIDEBAR':
@@ -48,6 +51,40 @@ const AppContext = createContext<{
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const SESSION_KEY = 'ts_session';
+
+  // Hydrate session on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { user: User; expiry: number };
+        if (parsed && parsed.user && typeof parsed.expiry === 'number') {
+          const now = Date.now();
+          if (now < parsed.expiry) {
+            dispatch({ type: 'SET_USER', payload: parsed.user });
+          } else {
+            localStorage.removeItem(SESSION_KEY);
+          }
+        }
+      }
+    } catch (e) {
+      // noop
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  }, []);
+
+  // Sync session when user changes
+  useEffect(() => {
+    if (state.currentUser) {
+      const expiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+      const payload = JSON.stringify({ user: state.currentUser, expiry });
+      localStorage.setItem(SESSION_KEY, payload);
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  }, [state.currentUser]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

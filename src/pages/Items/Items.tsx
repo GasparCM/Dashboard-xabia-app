@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, MapPin, Eye, Edit, Trash2, Map, List, Grid } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search, MapPin, Eye, Edit, Trash2, Map, List, Grid } from 'lucide-react';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Modal } from '../../components/UI/Modal';
@@ -9,6 +10,7 @@ import { usePermissions } from '../../store/AppContext';
 import toast from 'react-hot-toast';
 
 export const Items: React.FC = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState<POI[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
@@ -16,6 +18,8 @@ export const Items: React.FC = () => {
   const [selectedType, setSelectedType] = useState('all');
   const [selectedOccupancy, setSelectedOccupancy] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<POI | null>(null);
   const permissions = usePermissions();
 
   useEffect(() => {
@@ -30,6 +34,18 @@ export const Items: React.FC = () => {
 
     loadItems();
   }, []);
+
+  const openEdit = (item: POI) => {
+    setEditingItem(item);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingItem) return;
+    setItems(prev => prev.map(it => it.id === editingItem.id ? { ...it, ...editingItem } : it));
+    setShowEditModal(false);
+    toast.success('Ítem actualizado');
+  };
 
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -232,11 +248,11 @@ export const Items: React.FC = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-2 pt-2 border-t border-border">
-                  <Button variant="outline" size="sm" icon={Eye}>
+                  <Button variant="outline" size="sm" icon={Eye} onClick={() => navigate(`/items/${item.id}`)}>
                     Ver
                   </Button>
                   {permissions.canEdit && (
-                    <Button variant="outline" size="sm" icon={Edit}>
+                    <Button variant="outline" size="sm" icon={Edit} onClick={() => openEdit(item)}>
                       Editar
                     </Button>
                   )}
@@ -308,7 +324,7 @@ export const Items: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" icon={Eye}>Ver</Button>
                         {permissions.canEdit && (
-                          <Button variant="outline" size="sm" icon={Edit}>Editar</Button>
+                          <Button variant="outline" size="sm" icon={Edit} onClick={() => openEdit(item)}>Editar</Button>
                         )}
                         {permissions.canDelete && (
                           <Button 
@@ -369,6 +385,14 @@ export const Items: React.FC = () => {
             />
           </div>
           <div>
+            <label className="block text-sm font-medium text-text-title mb-1">Imagen</label>
+            <input
+              type="file"
+              accept="image/*"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-text-title mb-1">Dirección</label>
             <input
               type="text"
@@ -385,6 +409,98 @@ export const Items: React.FC = () => {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Editar Ítem/POI"
+        size="lg"
+      >
+        {editingItem && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-title mb-1">Nombre</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={editingItem.name}
+                  onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-title mb-1">Tipo</label>
+                <select
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={editingItem.type}
+                  onChange={(e) => setEditingItem({ ...editingItem, type: e.target.value as any })}
+                >
+                  <option value="beach">Playa</option>
+                  <option value="viewpoint">Mirador</option>
+                  <option value="restaurant">Restaurante</option>
+                  <option value="activity">Actividad</option>
+                  <option value="shop">Tienda</option>
+                  <option value="park">Parque</option>
+                  <option value="sports">Deportes</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Descripción</label>
+              <textarea
+                rows={3}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={editingItem.description}
+                onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Imagen</label>
+              <input
+                type="file"
+                accept="image/*"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Dirección</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={editingItem.address}
+                onChange={(e) => setEditingItem({ ...editingItem, address: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-title mb-1">Ocupación (%)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={editingItem.occupancy}
+                  onChange={(e) => setEditingItem({ ...editingItem, occupancy: Number(e.target.value) })}
+                />
+              </div>
+              <div className="flex items-center gap-2 mt-6">
+                <input
+                  id="isActive"
+                  type="checkbox"
+                  checked={editingItem.isActive}
+                  onChange={(e) => setEditingItem({ ...editingItem, isActive: e.target.checked })}
+                />
+                <label htmlFor="isActive" className="text-sm text-text-title">Activo</label>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancelar</Button>
+              <Button onClick={handleSaveEdit}>Guardar cambios</Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -1,10 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
-import { useApp } from '../../store/AppContext';
-import { mockUsers } from '../../mocks/data';
 
 interface LayoutProps {
   title: string;
@@ -12,12 +10,6 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ title, breadcrumb }) => {
-  const { state, dispatch } = useApp();
-
-  useEffect(() => {
-    // Simulate user login on app start
-    dispatch({ type: 'SET_USER', payload: mockUsers[0] });
-  }, [dispatch]);
 
   return (
     <div className="h-screen flex bg-bg-app">

@@ -84,7 +84,7 @@ export interface Notice {
   title: string;
   description: string;
   date: Date;
-  category: 'obras' | 'trafico' | 'emergencias' | 'general';
+  category: string;
   sendPush: boolean;
   isActive: boolean;
 }
@@ -93,7 +93,7 @@ export interface Notification {
   id: string;
   title: string;
   message: string;
-  type: 'reminder' | 'update' | 'promotion' | 'alert';
+  type: string;
   internalLink?: string;
   targetUser?: string;
   status: 'scheduled' | 'sent';

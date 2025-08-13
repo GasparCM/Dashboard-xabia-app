@@ -36,7 +36,7 @@ export const Modal: React.FC<ModalProps> = ({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
+          <div className="fixed inset-0 bg-black/40" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -52,7 +52,7 @@ export const Modal: React.FC<ModalProps> = ({
             >
               <Dialog.Panel className={`
                 w-full ${sizeClasses[size]} transform overflow-hidden rounded-card
-                bg-card-bg p-6 text-left align-middle shadow-xl transition-all
+                bg-white border border-border p-6 text-left align-middle shadow-2xl transition-all
               `}>
                 <Dialog.Title as="div" className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-text-title-strong">{title}</h3>

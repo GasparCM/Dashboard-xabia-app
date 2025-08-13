@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Send, Bell, AlertCircle, Info, Gift, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Bell, AlertCircle, Info, Gift, Eye, Edit, Trash2 } from 'lucide-react';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Modal } from '../../components/UI/Modal';
@@ -15,6 +15,8 @@ export const Notifications: React.FC = () => {
   const [selectedType, setSelectedType] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingNotification, setEditingNotification] = useState<Notification | null>(null);
   const permissions = usePermissions();
 
   useEffect(() => {
@@ -29,6 +31,18 @@ export const Notifications: React.FC = () => {
 
     loadNotifications();
   }, []);
+
+  const openEdit = (n: Notification) => {
+    setEditingNotification(n);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingNotification) return;
+    setNotifications(prev => prev.map(n => n.id === editingNotification.id ? { ...n, ...editingNotification } : n));
+    setShowEditModal(false);
+    toast.success('Notificación actualizada');
+  };
 
   const filteredNotifications = notifications.filter(notification => {
     const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -244,7 +258,7 @@ export const Notifications: React.FC = () => {
                         Ver
                       </Button>
                       {permissions.canEdit && notification.status === 'scheduled' && (
-                        <Button variant="outline" size="sm" icon={Edit}>
+                        <Button variant="outline" size="sm" icon={Edit} onClick={() => openEdit(notification)}>
                           Editar
                         </Button>
                       )}
@@ -334,6 +348,85 @@ export const Notifications: React.FC = () => {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Editar Notificación"
+        size="lg"
+      >
+        {editingNotification && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Título</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={editingNotification.title}
+                onChange={(e) => setEditingNotification({ ...editingNotification, title: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-title mb-1">Mensaje</label>
+              <textarea
+                rows={3}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={editingNotification.message}
+                onChange={(e) => setEditingNotification({ ...editingNotification, message: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-title mb-1">Tipo</label>
+                <select
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={editingNotification.type}
+                  onChange={(e) => setEditingNotification({ ...editingNotification, type: e.target.value as any })}
+                >
+                  <option value="reminder">Recordatorio</option>
+                  <option value="update">Actualización</option>
+                  <option value="promotion">Promoción</option>
+                  <option value="alert">Alerta</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-title mb-1">Fecha programada</label>
+                <input
+                  type="datetime-local"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={editingNotification.scheduledDate ? new Date(editingNotification.scheduledDate).toISOString().slice(0,16) : ''}
+                  onChange={(e) => setEditingNotification({ ...editingNotification, scheduledDate: e.target.value ? new Date(e.target.value) : undefined })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-title mb-1">Usuario específico (opcional)</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={editingNotification.targetUser || ''}
+                  onChange={(e) => setEditingNotification({ ...editingNotification, targetUser: e.target.value || undefined })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-title mb-1">Enlace interno (opcional)</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={(editingNotification as any).link || ''}
+                  onChange={(e) => setEditingNotification({ ...(editingNotification as any), link: e.target.value || undefined })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancelar</Button>
+              <Button onClick={handleSaveEdit}>Guardar cambios</Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
